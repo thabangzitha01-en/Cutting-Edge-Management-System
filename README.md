@@ -2,11 +2,6 @@
 
 A full-stack salon booking system for **ITC327W – Group B**. Includes a Flutter mobile app (Customer/Stylist), an ASP.NET web portal (Manager), and a shared Supabase backend.
 
-## Architecture
-Flutter App (Customer/Stylist) ─┐
-├──▶ Supabase (PostgreSQL + Auth + RLS)
-ASP.NET Web App (Manager) ──────┘
-
 Both apps share the same Supabase project, auth, and RLS policies. Booking statuses are standardised: `Pending → Confirmed → Cancelled → Completed`.
 
 ## Tech Stack
