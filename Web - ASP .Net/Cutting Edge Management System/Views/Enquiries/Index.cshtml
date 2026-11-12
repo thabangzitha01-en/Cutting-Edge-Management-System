@@ -1,0 +1,507 @@
+@* ============================================================
+   PROJECT: Cutting Edge Salon
+   STUDENT DETAILS:
+   ------------------------------------------------------------
+   Name                  | Student Number
+   ------------------------------------------------------------
+   Goitse Kgwele         | 221050663
+   Thabang Zitha         | 223007074
+   Yamkela Mazamani      | 224007421
+   Nyakallo Pali         | 223060226
+   Bennet Linda          | 224004294
+   ============================================================ *@
+
+@using CuttingEdge.ManagerPortal.Models
+@model List<CuttingEdge.ManagerPortal.Models.CustomerEnquiry>
+@{
+    ViewData["Title"] = "Customer Enquiries";
+    Layout = "_Layout";
+    var selected = ViewBag.SelectedStatus as string;
+    int openCount = ViewBag.OpenCount is int open ? open : 0;
+    int repliedCount = ViewBag.RepliedCount is int replied ? replied : 0;
+    var pendingLeave = ViewBag.PendingLeaveGroups as List<LeaveRequestGroup>
+                       ?? new List<LeaveRequestGroup>();
+}
+
+<div class="page-header">
+    <p class="breadcrumb">Dashboard → Customer Enquiries</p>
+    <p class="subtitle">Messages sent from the Cutting Edge Flutter app. Reply here to notify the customer directly.</p>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<!-- Summary Cards -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total Messages</div>
+        <div class="metric-value">@(openCount + repliedCount)</div>
+        <div class="metric-subtext">Received from the app</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Awaiting Reply</div>
+        <div class="metric-value @(openCount > 0 ? "text-gold" : "")">@openCount</div>
+        <div class="metric-subtext">Need a response</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Replied</div>
+        <div class="metric-value text-success">@repliedCount</div>
+        <div class="metric-subtext">Customer notified</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Leave Requests</div>
+        <div class="metric-value @(pendingLeave.Count > 0 ? "text-danger" : "")">@pendingLeave.Count</div>
+        <div class="metric-subtext">Pending your decision</div>
+    </div>
+</div>
+
+@if (pendingLeave.Any())
+{
+    <!-- Pending leave requests -->
+    <section class="leave-panel">
+        <h2>Stylist leave &amp; block-date requests (@pendingLeave.Count)</h2>
+        <p class="lead">
+            Pending requests already block customers from booking. You must click Review to type a reason before approving or rejecting.
+        </p>
+
+        @foreach (var g in pendingLeave)
+        {
+            <div class="leave-card">
+                <div class="leave-card-main">
+                    <div class="stylist">
+                        @g.StylistName
+                        <span class="type">· @g.TypeLabel</span>
+                    </div>
+                    <div class="range">@g.RangeLabel</div>
+                    <div class="reason"><strong>Reason:</strong> @g.Reason</div>
+                    <div class="meta">Requested @g.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</div>
+                </div>
+
+                <a asp-action="Details" asp-route-id="@g.EnquiryId" class="btn btn-sm btn-outline">
+                    Review &amp; Reply &rarr;
+                </a>
+            </div>
+        }
+    </section>
+}
+
+<!-- Filters -->
+<div class="filters-row">
+    <div class="filter-tabs">
+        <a asp-action="Index" class="btn btn-sm @(string.IsNullOrEmpty(selected) ? "btn-primary" : "btn-outline")">All messages</a>
+        <a asp-action="Index" asp-route-status="open" class="btn btn-sm @(selected == "open" ? "btn-primary" : "btn-outline")">Awaiting reply (@openCount)</a>
+        <a asp-action="Index" asp-route-status="replied" class="btn btn-sm @(selected == "replied" ? "btn-primary" : "btn-outline")">Replied (@repliedCount)</a>
+    </div>
+</div>
+
+<!-- Messages list -->
+<div class="enq-container">
+    @if (Model != null && Model.Any())
+    {
+        @foreach (var item in Model)
+        {
+            var shownMessage = System.Text.RegularExpressions.Regex.Replace(item.Message, @"^\s*Stylist ID:\s*\d+\s*\|\s*", "");
+
+            <a class="enq-item" asp-controller="Enquiries" asp-action="Details" asp-route-id="@item.EnquiryId">
+                <div class="enq-row">
+                    <div class="enq-main">
+                        <div class="enq-header">
+                            <span class="enq-customer">@item.CustomerName</span>
+                            <span class="enq-category">@item.Category</span>
+                        </div>
+                        <div class="enq-subject">@item.Subject</div>
+                        <div class="enq-preview">@(shownMessage.Length > 230 ? shownMessage[..230] + "…" : shownMessage)</div>
+                    </div>
+
+                    <div class="enq-actions">
+                        <span class="enq-time">@item.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</span>
+                        <span class="badge @(item.Status == "replied" ? "badge-completed" : "badge-incomplete")">
+                            @(item.Status == "replied" ? "Replied" : "Awaiting reply")
+                        </span>
+                    </div>
+                </div>
+            </a>
+        }
+    }
+    else
+    {
+        <div class="enq-empty">There are no customer messages in this view.</div>
+    }
+</div>
+
+<style>
+
+    /* ===== Page header (same as Bookings / Reviews) ===== */
+    .page-header {
+        margin-bottom: 25px;
+    }
+
+    .breadcrumb {
+        color: #888;
+        font-size: 13px;
+        margin: 0 0 8px 0;
+    }
+
+    .page-header .subtitle {
+        color: #888;
+        font-size: 14px;
+        margin: 5px 0 0 0;
+    }
+
+    /* ===== Buttons ===== */
+    .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+        display: inline-block;
+        font-family: inherit;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background-color: #d4af37;
+        color: #0d0d0d;
+    }
+
+        .btn-primary:hover {
+            background-color: #f0d060;
+            color: #0d0d0d;
+            text-decoration: none;
+        }
+
+    .btn-secondary {
+        background-color: #333;
+        color: #fff;
+    }
+
+        .btn-secondary:hover {
+            background-color: #444;
+            color: #fff;
+            text-decoration: none;
+        }
+
+    .btn-sm {
+        padding: 7px 16px;
+        font-size: 13px;
+    }
+
+    .btn-outline {
+        background-color: transparent;
+        border: 1px solid #d4af37;
+        color: #d4af37;
+    }
+
+        .btn-outline:hover {
+            background-color: #d4af37;
+            color: #0d0d0d;
+            text-decoration: none;
+        }
+
+    /* ===== Status badges (same as Bookings) ===== */
+    .badge {
+        display: inline-block;
+        padding: 6px 18px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        min-width: 100px;
+        text-align: center;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    .badge-completed {
+        background-color: rgba(40, 167, 69, 0.08);
+        color: #28a745;
+        border: 2px solid #28a745;
+    }
+
+    .badge-incomplete {
+        background-color: rgba(212, 175, 55, 0.08);
+        color: #d4af37;
+        border: 2px solid #d4af37;
+    }
+
+    /* ===== Alerts ===== */
+    .alert {
+        padding: 14px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .alert-success {
+        background-color: rgba(40, 167, 69, 0.15);
+        border: 1px solid #28a745;
+        color: #28a745;
+    }
+
+    .alert-danger {
+        background-color: rgba(220, 53, 69, 0.15);
+        border: 1px solid #dc3545;
+        color: #ff6b6b;
+    }
+
+    /* ===== Summary cards (same as Reviews) ===== */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+        margin-bottom: 25px;
+    }
+
+    .metric-card {
+        background-color: #1a1a1a;
+        border: 1px solid #d4af37;
+        border-radius: 12px;
+        padding: 22px;
+        transition: all 0.3s ease;
+    }
+
+        .metric-card:hover {
+            border-color: #f0d060;
+            box-shadow: 0 0 18px rgba(212, 175, 55, 0.12);
+        }
+
+    .metric-label {
+        color: #888;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 10px;
+    }
+
+    .metric-value {
+        color: #fff;
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1.1;
+        margin-bottom: 6px;
+    }
+
+        .metric-value.text-danger {
+            color: #dc3545;
+        }
+
+        .metric-value.text-success {
+            color: #28a745;
+        }
+
+        .metric-value.text-gold {
+            color: #d4af37;
+        }
+
+    .metric-subtext {
+        color: #666;
+        font-size: 12px;
+    }
+
+    /* ===== Leave requests panel ===== */
+    .leave-panel {
+        background-color: #1a1a1a;
+        border: 1px solid #d4af37;
+        border-radius: 12px;
+        padding: 22px;
+        margin-bottom: 25px;
+    }
+
+        .leave-panel h2 {
+            color: #d4af37;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 8px 0;
+        }
+
+        .leave-panel .lead {
+            color: #888;
+            font-size: 13px;
+            margin: 0 0 16px 0;
+        }
+
+    .leave-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        background-color: #0d0d0d;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 12px;
+    }
+
+        .leave-card:last-child {
+            margin-bottom: 0;
+        }
+
+    .leave-card-main {
+        flex: 1;
+        min-width: 260px;
+    }
+
+    .leave-card .stylist {
+        color: #fff;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+        .leave-card .stylist .type {
+            color: #888;
+            font-weight: 400;
+            font-size: 12px;
+        }
+
+    .leave-card .range {
+        color: #d4af37;
+        font-size: 13px;
+        margin-top: 4px;
+    }
+
+    .leave-card .reason {
+        color: #bbb;
+        font-size: 13px;
+        margin-top: 6px;
+        white-space: pre-wrap;
+    }
+
+        .leave-card .reason strong {
+            color: #d4af37;
+        }
+
+    .leave-card .meta {
+        color: #666;
+        font-size: 12px;
+        margin-top: 6px;
+    }
+
+    /* ===== Filters ===== */
+    .filters-row {
+        background-color: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+
+    .filter-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    /* ===== Messages list (same look as the Reviews list) ===== */
+    .enq-container {
+        background-color: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 0 25px;
+    }
+
+    .enq-item {
+        display: block;
+        border-bottom: 1px solid #2a2a2a;
+        padding: 20px 0;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+        .enq-item:last-child {
+            border-bottom: none;
+        }
+
+        .enq-item:hover .enq-subject {
+            color: #d4af37;
+        }
+
+    .enq-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .enq-main {
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .enq-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .enq-customer {
+        color: #fff;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .enq-category {
+        color: #888;
+        font-size: 12px;
+    }
+
+    .enq-subject {
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        transition: color 0.2s ease;
+    }
+
+    .enq-preview {
+        color: #bbb;
+        font-size: 13px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .enq-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .enq-time {
+        color: #666;
+        font-size: 12px;
+    }
+
+    .enq-empty {
+        color: #666;
+        font-style: italic;
+        text-align: center;
+        padding: 30px 0;
+    }
+
+    @@media (max-width: 600px) {
+        .enq-actions {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+    }
+</style>

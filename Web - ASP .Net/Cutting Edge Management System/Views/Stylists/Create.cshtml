@@ -1,0 +1,756 @@
+@* ============================================================
+   PROJECT: Cutting Edge Salon
+   STUDENT DETAILS:
+   ------------------------------------------------------------
+   Name                  | Student Number
+   ------------------------------------------------------------
+   Goitse Kgwele         | 221050663
+   Thabang Zitha         | 223007074
+   Yamkela Mazamani      | 224007421
+   Nyakallo Pali         | 223060226
+   Bennet Linda          | 224004294
+   ============================================================ *@
+
+
+@model CuttingEdge.ManagerPortal.ViewModels.StylistViewModel
+
+@{
+    ViewData["Title"] = "New Stylist";
+    Layout = "_Layout";
+
+    var services = ViewBag.Services as List<CuttingEdge.ManagerPortal.Models.Service>;
+}
+
+<div class="page-header">
+    <p class="breadcrumb">Stylists > New Stylist</p>
+    <p class="subtitle">Add a new stylist to the team.</p>
+</div>
+
+<div class="form-container">
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert alert-danger">
+                @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+            </div>
+        }
+
+        <!-- Photo -->
+        <div class="photo-section">
+            <div class="photo-avatar" id="photoAvatar">
+                <span>+</span>
+            </div>
+            <div class="photo-info">
+                <label class="photo-label">Profile Photo</label>
+                <label class="btn-upload">
+                    Upload Photo
+                    <input type="file" name="photoFile" accept="image/png,image/jpeg" onchange="previewPhoto(event)" />
+                </label>
+            </div>
+        </div>
+
+        <!-- Personal Info -->
+        <div class="form-section">
+            <h2>Personal Information</h2>
+
+            <div class="form-group">
+                <label>Full Name <span class="required">*</span></label>
+                <input asp-for="FullName" class="form-control" placeholder="e.g., Thabang" required />
+            </div>
+
+            <div class="form-group">
+                <label>Email <span class="required">*</span></label>
+                <input asp-for="Email" type="email" class="form-control" placeholder="stylist@cuttingedge.co.za" required />
+            </div>
+
+            <div class="form-group">
+                <label asp-for="InitialPassword">Login Password (Optional - auto-generated if blank)</label>
+                <input asp-for="InitialPassword" type="password" class="form-control" minlength="8"
+                       autocomplete="new-password" placeholder="At least 8 characters" />
+                <span asp-validation-for="InitialPassword" class="text-danger"></span>
+                <p class="field-hint">Leave blank and the system generates a secure password. Either way, the stylist is emailed their login email and password and should change it after their first login.</p>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Phone">Contact Number <span class="required">*</span></label>
+                <input asp-for="Phone" type="tel" class="form-control" placeholder="075 665 8912"
+                       inputmode="tel" maxlength="15" required
+                       pattern="^\+?[0-9\s]{10,15}$"
+                       title="Enter a valid phone number using digits only (10 to 15 digits), e.g. 075 665 8912"
+                       oninput="this.value = this.value.replace(/[^0-9+\s]/g, '')" />
+                <span asp-validation-for="Phone" class="text-danger"></span>
+            </div>
+        </div>
+
+        <!-- Services -->
+        <div class="form-section">
+            <h2>Services Offered</h2>
+            <p class="field-hint">Select the services this stylist can perform.</p>
+
+            <div class="stylist-chips">
+                @if (services != null && services.Any())
+                {
+                    @foreach (var service in services)
+                    {
+                        <label class="chip-label">
+                            <input type="checkbox" name="ServiceIds" value="@service.ServiceId" />
+                            <span class="chip">@service.Name</span>
+                        </label>
+                    }
+                }
+                else
+                {
+                    <p class="hint">No services available yet.</p>
+                }
+                <button type="button" class="chip-select-all" onclick="selectAllServices()">+ Select all</button>
+            </div>
+        </div>
+
+        <!-- Working Days & Hours -->
+        <div class="form-section">
+            <h2>Working Days &amp; Hours</h2>
+            <p class="field-hint">Switch on the days this stylist works, then choose their start and end time for each day.</p>
+
+            <div class="week-toolbar">
+                <button type="button" class="btn-mini" onclick="copyMondayToAll()">Copy Monday's hours to all open days</button>
+                <span class="week-summary" id="weekSummary"></span>
+            </div>
+
+            <div class="week-grid" id="weekGrid">
+                @{
+                    var weekDays = new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+                    var posted = Model?.WeekSchedule;
+                }
+                @foreach (var day in weekDays)
+                {
+                    var hasPosted = posted != null && posted.TryGetValue(day, out _);
+                    var enabled = hasPosted ? posted![day].Enabled : day != "Sunday";
+                    var startValue = hasPosted && !string.IsNullOrEmpty(posted![day].StartTime) ? posted[day].StartTime : "09:00";
+                    var endValue = hasPosted && !string.IsNullOrEmpty(posted![day].EndTime) ? posted[day].EndTime : (day == "Saturday" ? "15:00" : "17:00");
+
+                    <div class="day-row @(enabled ? "" : "is-off")">
+                        <label class="switch" title="Works on @day">
+                            <input type="checkbox" class="day-toggle" name="WeekSchedule[@day].Enabled" value="true" checked="@enabled" />
+                            <input type="hidden" name="WeekSchedule[@day].Enabled" value="false" />
+                            <span class="slider"></span>
+                        </label>
+                        <span class="day-name">@day</span>
+                        <div class="day-times">
+                            <input type="time" name="WeekSchedule[@day].StartTime" class="form-control time-input" value="@startValue" readonly="@(!enabled)" />
+                            <span class="to-sep">to</span>
+                            <input type="time" name="WeekSchedule[@day].EndTime" class="form-control time-input" value="@endValue" readonly="@(!enabled)" />
+                        </div>
+                        <span class="day-off-label">Day off</span>
+                        <span class="day-error">End must be after start</span>
+                    </div>
+                }
+            </div>
+
+            <p class="field-hint week-note">The schedule is created for the next 8 weeks from today. You can change it any time under <strong>Schedule</strong>.</p>
+        </div>
+
+        <!-- Status -->
+        <div class="form-section">
+            <h2>Status</h2>
+
+            <div class="form-group checkbox-group">
+                <label class="checkbox-label">
+                    <input asp-for="Active" type="checkbox" checked />
+                    <span class="checkbox-text">
+                        <strong>Active</strong>
+                        <span class="hint">Active stylists are visible to customers when booking.</span>
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Add Stylist</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function selectAllServices() {
+        document.querySelectorAll('input[name="ServiceIds"]').forEach(cb => cb.checked = true);
+    }
+
+    function previewPhoto(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const avatar = document.getElementById('photoAvatar');
+            avatar.style.backgroundImage = `url(${e.target.result})`;
+            avatar.classList.add('has-image');
+            avatar.innerHTML = '';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ===== Weekly hours editor =====
+    function toMinutes(v) {
+        if (!v) return NaN;
+        const parts = v.split(':').map(Number);
+        return parts[0] * 60 + parts[1];
+    }
+
+    function refreshWeek() {
+        let openDays = 0, totalMinutes = 0;
+        document.querySelectorAll('#weekGrid .day-row').forEach(row => {
+            const on = row.querySelector('.day-toggle').checked;
+            const times = row.querySelectorAll('.time-input');
+            const diff = toMinutes(times[1].value) - toMinutes(times[0].value);
+            row.classList.toggle('is-off', !on);
+            times.forEach(t => t.readOnly = !on);
+            row.classList.toggle('is-invalid', on && !(diff > 0));
+            if (on) openDays++;
+            if (on && diff > 0) totalMinutes += diff;
+        });
+        const hours = Math.round(totalMinutes / 6) / 10;
+        document.getElementById('weekSummary').textContent =
+            openDays === 0 ? 'No working days selected'
+                           : openDays + (openDays === 1 ? ' working day' : ' working days') + ' \u00B7 ' + hours + ' hours per week';
+    }
+
+    function copyMondayToAll() {
+        const rows = document.querySelectorAll('#weekGrid .day-row');
+        const monday = rows[0].querySelectorAll('.time-input');
+        rows.forEach((row, i) => {
+            if (i === 0 || !row.querySelector('.day-toggle').checked) return;
+            const t = row.querySelectorAll('.time-input');
+            t[0].value = monday[0].value;
+            t[1].value = monday[1].value;
+        });
+        refreshWeek();
+    }
+
+    document.querySelectorAll('#weekGrid .day-toggle, #weekGrid .time-input').forEach(el => {
+        el.addEventListener('input', refreshWeek);
+        el.addEventListener('change', refreshWeek);
+    });
+
+    document.getElementById('weekGrid').closest('form').addEventListener('submit', function (e) {
+        refreshWeek();
+        const bad = document.querySelector('#weekGrid .day-row.is-invalid');
+        if (bad) {
+            e.preventDefault();
+            bad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+
+    refreshWeek();
+</script>
+
+<style>
+    body {
+        background-color: #0d0d0d;
+    }
+
+    .page-header {
+        margin-bottom: 25px;
+    }
+
+    .breadcrumb {
+        color: #888;
+        font-size: 13px;
+        margin: 0 0 8px 0;
+    }
+
+    .page-header h1 {
+        color: #d4af37;
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .page-header .subtitle {
+        color: #888;
+        font-size: 14px;
+        margin: 5px 0 0 0;
+    }
+
+    .form-container {
+        background-color: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 14px;
+        padding: 35px;
+        max-width: 800px;
+    }
+
+    /* ===== Photo Section ===== */
+    .photo-section {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        margin-bottom: 30px;
+        padding-bottom: 25px;
+        border-bottom: 1px solid #2a2a2a;
+    }
+
+    .photo-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background-color: #0d0d0d;
+        border: 2px dashed #d4af37;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #d4af37;
+        font-size: 34px;
+        font-weight: 300;
+        background-size: cover;
+        background-position: center;
+        flex-shrink: 0;
+    }
+
+        .photo-avatar.has-image {
+            border-style: solid;
+        }
+
+    .photo-info {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .photo-label {
+        color: #d4af37;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-upload {
+        padding: 10px 20px;
+        background-color: transparent;
+        border: 1px solid #d4af37;
+        color: #d4af37;
+        font-size: 13px;
+        font-weight: 700;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.3s ease;
+        display: inline-block;
+    }
+
+        .btn-upload:hover {
+            background-color: #d4af37;
+            color: #0d0d0d;
+        }
+
+        .btn-upload input {
+            display: none;
+        }
+
+    /* ===== Form Sections ===== */
+    .form-section {
+        margin-bottom: 28px;
+        padding-bottom: 25px;
+        border-bottom: 1px solid #2a2a2a;
+    }
+
+        .form-section:last-of-type {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .form-section h2 {
+            color: #d4af37;
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0 0 18px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+        .form-group label {
+            display: block;
+            color: #d4af37;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+    .required {
+        color: #dc3545;
+    }
+
+    .field-hint {
+        color: #888;
+        font-size: 12px;
+        margin: 0 0 14px 0;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        background-color: #0d0d0d;
+        border: 1px solid #333;
+        border-radius: 8px;
+        color: #fff;
+        font-size: 14px;
+        outline: none;
+        box-sizing: border-box;
+        font-family: inherit;
+        transition: all 0.3s ease;
+    }
+
+        .form-control:focus {
+            border-color: #d4af37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+        }
+
+        .form-control::placeholder {
+            color: #555;
+        }
+
+    /* ===== Service Chips ===== */
+    .stylist-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .chip-label {
+        cursor: pointer;
+    }
+
+        .chip-label input {
+            display: none;
+        }
+
+    .chip {
+        display: inline-block;
+        padding: 8px 18px;
+        border-radius: 24px;
+        background-color: #0d0d0d;
+        border: 1px solid #444;
+        color: #aaa;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .chip-label input:checked + .chip {
+        background-color: #d4af37;
+        border-color: #d4af37;
+        color: #0d0d0d;
+    }
+
+    .chip-label:hover .chip {
+        border-color: #d4af37;
+        color: #d4af37;
+    }
+
+    .chip-label input:checked:hover + .chip {
+        color: #0d0d0d;
+    }
+
+    .chip-select-all {
+        padding: 8px 18px;
+        border-radius: 24px;
+        background-color: transparent;
+        border: 1px dashed #d4af37;
+        color: #d4af37;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+        .chip-select-all:hover {
+            background-color: rgba(212, 175, 55, 0.1);
+        }
+
+    .hint {
+        color: #666;
+        font-size: 12px;
+        font-style: italic;
+        margin: 0;
+    }
+
+    /* ===== Checkbox ===== */
+    .checkbox-group {
+        margin-top: 10px;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        cursor: pointer;
+    }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            accent-color: #d4af37;
+            cursor: pointer;
+        }
+
+    .checkbox-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+        .checkbox-text strong {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .checkbox-text .hint {
+            color: #888;
+            font-size: 12px;
+        }
+
+    /* ===== Weekly Hours Editor ===== */
+    .week-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .btn-mini {
+        background: transparent;
+        border: 1px dashed #d4af37;
+        color: #d4af37;
+        border-radius: 999px;
+        padding: 7px 16px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s ease;
+    }
+
+        .btn-mini:hover {
+            background: rgba(212, 175, 55, 0.12);
+        }
+
+    .week-summary {
+        color: #aaa;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .week-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .day-row {
+        display: grid;
+        grid-template-columns: 52px 120px 1fr auto;
+        align-items: center;
+        gap: 14px;
+        background-color: #0d0d0d;
+        border: 1px solid #2a2a2a;
+        border-radius: 10px;
+        padding: 10px 16px;
+        transition: all 0.2s ease;
+    }
+
+        .day-row:hover {
+            border-color: #3a3a3a;
+        }
+
+        .day-row .day-name {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+    .day-times {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+        .day-times .form-control {
+            width: 140px;
+            padding: 9px 12px;
+            color-scheme: dark;
+        }
+
+    .to-sep {
+        color: #777;
+        font-size: 12px;
+    }
+
+    .day-off-label,
+    .day-error {
+        display: none;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .day-off-label {
+        color: #777;
+    }
+
+    .day-error {
+        color: #ff8a95;
+    }
+
+    .day-row.is-off {
+        opacity: 0.55;
+    }
+
+        .day-row.is-off .day-times .form-control {
+            pointer-events: none;
+            background-color: #141414;
+        }
+
+        .day-row.is-off .day-off-label {
+            display: inline;
+        }
+
+    .day-row.is-invalid {
+        border-color: #dc3545;
+    }
+
+        .day-row.is-invalid .day-error {
+            display: inline;
+        }
+
+    .week-note {
+        margin: 14px 0 0 0;
+    }
+
+    /* Toggle switch */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        margin: 0;
+        cursor: pointer;
+    }
+
+        .switch input[type="checkbox"] {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+
+    .slider {
+        position: absolute;
+        inset: 0;
+        background-color: #333;
+        border-radius: 24px;
+        transition: all 0.25s ease;
+    }
+
+        .slider::before {
+            content: "";
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            top: 3px;
+            background-color: #fff;
+            border-radius: 50%;
+            transition: all 0.25s ease;
+        }
+
+    .switch input:checked + input + .slider {
+        background-color: #d4af37;
+    }
+
+        .switch input:checked + input + .slider::before {
+            transform: translateX(20px);
+            background-color: #111;
+        }
+
+    @@media (max-width: 700px) {
+        .day-row {
+            grid-template-columns: 52px 1fr;
+            row-gap: 10px;
+        }
+
+        .day-times {
+            grid-column: 1 / -1;
+        }
+
+            .day-times .form-control {
+                width: 100%;
+            }
+    }
+
+    /* ===== Form Actions ===== */
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 25px;
+    }
+
+    .btn {
+        padding: 12px 26px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background-color: #d4af37;
+        color: #0d0d0d;
+    }
+
+        .btn-primary:hover {
+            background-color: #f0d060;
+            transform: translateY(-1px);
+        }
+
+    .btn-secondary {
+        background-color: #333;
+        color: #fff;
+    }
+
+        .btn-secondary:hover {
+            background-color: #444;
+            color: #fff;
+        }
+
+    /* ===== Alerts ===== */
+    .alert {
+        padding: 14px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .alert-danger {
+        background-color: rgba(220, 53, 69, 0.15);
+        border: 1px solid #dc3545;
+        color: #ff6b6b;
+    }
+</style>
