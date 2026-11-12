@@ -91,12 +91,12 @@ dotnet restore
 dotnet run
 Functional Requirements
 Req	App	Status
-FR-01: View service catalogue	Flutter	✅
-FR-03: Book appointment online	Flutter	✅
-FR-04: Prevent double bookings	Flutter + Supabase	✅
-FR-06: Manage all bookings	ASP.NET	✅
-FR-08: Customer cancellation	Flutter	✅
-FR-18: Payment method selection	Flutter	✅
+FR-01: View service catalogue	Flutter	
+FR-03: Book appointment online	Flutter	
+FR-04: Prevent double bookings	Flutter + Supabase	
+FR-06: Manage all bookings	ASP.NET	
+FR-08: Customer cancellation	Flutter	
+FR-18: Payment method selection	Flutter	
 Known Limitations
 Automated email reminders (FR-09) simplified to manual reminders via admin dashboard.
 
