@@ -1,16 +1,3 @@
-// ============================================================
-// PROJECT: Cutting Edge Salon
-// STUDENT DETAILS:
-// ------------------------------------------------------------
-// Name                  | Student Number
-// ------------------------------------------------------------
-// Goitse Kgwele         | 221050663
-// Thabang Zitha         | 223007074
-// Yamkela Mazamani      | 224007421
-// Nyakallo Pali         | 223060226
-// Bennet Linda          | 224004294
-// ============================================================
-
 namespace CuttingEdge.ManagerPortal.ViewModels;
 
 /// Working hours for one weekday. Times are "HH:mm" strings (from &lt;input type="time"&gt;)
