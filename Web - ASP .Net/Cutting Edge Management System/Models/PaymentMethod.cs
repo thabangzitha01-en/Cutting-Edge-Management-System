@@ -5,6 +5,6 @@ public class PaymentMethod
 {
     // Primary key.
     public long PaymentMethodId { get; set; }
-    // Display name, e.g. "Cash", "Card", "EFT".
+    // Display name, e.g. "Cash", "Card".
     public string MethodName { get; set; } = string.Empty;
 }
