@@ -1,13 +1,3 @@
-// ------------------------------------------------------------
-// Name                  | Student Number
-// ------------------------------------------------------------
-// Goitse Kgwele         | 221050663
-// Thabang Zitha         | 223007074
-// Yamkela Mazamani      | 224007421
-// Nyakallo Pali         | 223060226
-// Bennet Linda          | 224004294
-// ============================================================
-
 using CuttingEdge.ManagerPortal.Models;
 using CuttingEdge.ManagerPortal.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -27,8 +17,8 @@ public class ProfileController : Controller
 
     private static readonly HashSet<string> AllowedBranches = new(StringComparer.Ordinal)
     {
-        "Cutting Edge — Welkom Central",
-        "Cutting Edge — Bloemfontein CBD"
+        "Cutting Edge â€” Welkom Central",
+        "Cutting Edge â€” Bloemfontein CBD"
     };
 
     public ProfileController(SupabaseService supabaseService, ILogger<ProfileController> logger)
